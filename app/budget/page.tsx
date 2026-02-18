@@ -19,6 +19,7 @@ export default function BudgetPage() {
   const [forecast, setForecast] = useState<ForecastResult | null>(null);
   const [form, setForm] = useState(formSeed);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   async function load() {
     try {
@@ -34,8 +35,24 @@ export default function BudgetPage() {
     load();
   }, []);
 
+  function validateBudget(): boolean {
+    const errors: Record<string, string> = {};
+    if (!form.category) {
+      errors.category = 'Category is required.';
+    }
+    if (Number(form.amount) <= 0) {
+      errors.amount = 'Amount must be greater than 0.';
+    }
+    if (!form.date) {
+      errors.date = 'Date is required.';
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!validateBudget()) return;
     try {
       await createBudgetEntry({ ...form, amount: Number(form.amount), category: form.category as 'living' | 'travel' });
       setForm((old) => ({ ...old, amount: 0, note: '' }));
@@ -68,29 +85,36 @@ export default function BudgetPage() {
 
       <form className="card space-y-3" onSubmit={onSubmit}>
         <div className="grid grid-cols-2 gap-3">
-          <select
-            className="input"
-            value={form.category}
-            onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))}
-          >
-            <option value="living">Living</option>
-            <option value="travel">Travel</option>
-          </select>
-          <input
-            className="input"
-            type="number"
-            min={0}
-            placeholder="Amount"
-            value={form.amount}
-            onChange={(event) => setForm((old) => ({ ...old, amount: Number(event.target.value) }))}
-          />
+          <div>
+            <select
+              className={`input ${fieldErrors.category ? 'border-red-400' : ''}`}
+              value={form.category}
+              onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))}
+            >
+              <option value="living">Living</option>
+              <option value="travel">Travel</option>
+            </select>
+            {fieldErrors.category && <p className="mt-1 text-xs text-red-600">{fieldErrors.category}</p>}
+          </div>
+          <div>
+            <input
+              className={`input ${fieldErrors.amount ? 'border-red-400' : ''}`}
+              type="number"
+              min={0}
+              placeholder="Amount"
+              value={form.amount}
+              onChange={(event) => setForm((old) => ({ ...old, amount: Number(event.target.value) }))}
+            />
+            {fieldErrors.amount && <p className="mt-1 text-xs text-red-600">{fieldErrors.amount}</p>}
+          </div>
         </div>
         <input
-          className="input"
+          className={`input ${fieldErrors.date ? 'border-red-400' : ''}`}
           type="date"
           value={form.date}
           onChange={(event) => setForm((old) => ({ ...old, date: event.target.value }))}
         />
+        {fieldErrors.date && <p className="mt-1 text-xs text-red-600">{fieldErrors.date}</p>}
         <input
           className="input"
           placeholder="Note"
