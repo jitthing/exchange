@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { SectionTitle } from '@/components/section-title';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { optimizeTrips } from '@/lib/api';
 import { TripOption } from '@/lib/types';
 
@@ -15,6 +19,12 @@ const initialForm = {
   departureCity: 'Berlin'
 };
 
+function riskBadgeVariant(risk: string) {
+  if (risk === 'high-risk') return 'danger' as const;
+  if (risk === 'warning') return 'warning' as const;
+  return 'safe' as const;
+}
+
 export default function DiscoverPage() {
   const [form, setForm] = useState(initialForm);
   const [results, setResults] = useState<TripOption[]>([]);
@@ -24,15 +34,9 @@ export default function DiscoverPage() {
 
   function validate(): boolean {
     const errors: Record<string, string> = {};
-    if (!form.departureCity.trim()) {
-      errors.departureCity = 'Departure city is required.';
-    }
-    if (form.budgetCap <= 0) {
-      errors.budgetCap = 'Budget cap must be greater than 0.';
-    }
-    if (form.maxTravelHours <= 0) {
-      errors.maxTravelHours = 'Max travel hours must be greater than 0.';
-    }
+    if (!form.departureCity.trim()) errors.departureCity = 'Departure city is required.';
+    if (form.budgetCap <= 0) errors.budgetCap = 'Budget cap must be greater than 0.';
+    if (form.maxTravelHours <= 0) errors.maxTravelHours = 'Max travel hours must be greater than 0.';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -53,64 +57,76 @@ export default function DiscoverPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <SectionTitle title="Weekend Optimizer" subtitle="Suggests destinations by budget, timing, and style." />
+    <div className="space-y-6">
+      <SectionHeader title="Discover" subtitle="Find your next weekend trip" />
 
-      <form className="card space-y-3" onSubmit={onSubmit}>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Departure city</label>
-          <input
-            className={`input ${fieldErrors.departureCity ? 'border-red-400' : ''}`}
+      <Card>
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <Input
+            label="Departure city"
             value={form.departureCity}
-            onChange={(event) => setForm((old) => ({ ...old, departureCity: event.target.value }))}
+            error={fieldErrors.departureCity}
+            onChange={(e) => setForm((old) => ({ ...old, departureCity: e.target.value }))}
           />
-          {fieldErrors.departureCity && <p className="mt-1 text-xs text-red-600">{fieldErrors.departureCity}</p>}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium">Budget cap (EUR)</label>
-            <input
-              className={`input ${fieldErrors.budgetCap ? 'border-red-400' : ''}`}
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Budget cap (€)"
               type="number"
               value={form.budgetCap}
-              onChange={(event) => setForm((old) => ({ ...old, budgetCap: Number(event.target.value) }))}
+              error={fieldErrors.budgetCap}
+              onChange={(e) => setForm((old) => ({ ...old, budgetCap: Number(e.target.value) }))}
             />
-            {fieldErrors.budgetCap && <p className="mt-1 text-xs text-red-600">{fieldErrors.budgetCap}</p>}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">Max travel hours</label>
-            <input
-              className={`input ${fieldErrors.maxTravelHours ? 'border-red-400' : ''}`}
+            <Input
+              label="Max travel hours"
               type="number"
               value={form.maxTravelHours}
-              onChange={(event) => setForm((old) => ({ ...old, maxTravelHours: Number(event.target.value) }))}
+              error={fieldErrors.maxTravelHours}
+              onChange={(e) => setForm((old) => ({ ...old, maxTravelHours: Number(e.target.value) }))}
             />
-            {fieldErrors.maxTravelHours && <p className="mt-1 text-xs text-red-600">{fieldErrors.maxTravelHours}</p>}
           </div>
-        </div>
-        <button className="button" type="submit" disabled={loading}>
-          {loading ? 'Optimizing...' : 'Find trips'}
-        </button>
-        {error ? <p className="text-sm text-red-700">{error}</p> : null}
-      </form>
+          <Button type="submit" variant="accent" loading={loading} className="w-full">
+            🧭 Find Trips
+          </Button>
+          {error ? <p className="text-small text-danger">{error}</p> : null}
+        </form>
+      </Card>
 
-      <section className="space-y-3">
+      <div className="space-y-3">
         {results.map((option) => (
-          <article key={option.id} className="card space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{option.destination}</h2>
-              <span className="text-sm font-medium">EUR {option.totalEstimatedCost.toFixed(0)}</span>
+          <Card key={option.id} shadow="medium">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-h2 text-heading">{option.destination}</h2>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {option.reasonTags.map((tag) => (
+                    <Badge key={tag} variant="info">{tag}</Badge>
+                  ))}
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-h3 font-semibold text-heading">€{option.totalEstimatedCost.toFixed(0)}</p>
+                <Badge variant={riskBadgeVariant(option.riskLevel)}>{option.riskLevel}</Badge>
+              </div>
             </div>
-            <p className="text-xs text-slate-500">{option.reasonTags.join(' | ')}</p>
-            <div className="text-sm text-slate-600">
-              Best transport: {option.transportOptions[0]?.provider} ({option.transportOptions[0]?.durationHours}h)
-            </div>
-            <Link href="/trips/trip-1" className="button-secondary inline-block">
-              View sample trip detail
+
+            {option.transportOptions[0] ? (
+              <div className="mt-3 flex items-center gap-2 text-small text-muted">
+                <span>🚆</span>
+                <span>
+                  {option.transportOptions[0].provider} · {option.transportOptions[0].durationHours}h · €{option.transportOptions[0].price}
+                </span>
+              </div>
+            ) : null}
+
+            <Link
+              href="/trips/trip-1"
+              className="mt-3 inline-block text-small font-medium text-primary hover:underline"
+            >
+              View details →
             </Link>
-          </article>
+          </Card>
         ))}
-      </section>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import Link from 'next/link';
-import { KpiCard } from '@/components/kpi-card';
-import { SectionTitle } from '@/components/section-title';
+import { KpiCard } from '@/components/ui/kpi-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { API_BASE_URL } from '@/lib/config';
 
 type Forecast = {
@@ -27,45 +29,70 @@ async function getData(): Promise<{ forecast: Forecast; windows: TravelWindow[] 
   return { forecast, windows: windowsPayload.windows };
 }
 
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
 export default async function HomePage() {
   const { forecast, windows } = await getData();
   const nextWindow = windows[0];
 
+  const affordabilityBadge = {
+    green: { variant: 'safe' as const, label: 'On track' },
+    amber: { variant: 'warning' as const, label: 'Watch it' },
+    red: { variant: 'danger' as const, label: 'Over budget' },
+  }[forecast.affordability];
+
   return (
     <div className="space-y-6">
-      <SectionTitle
-        title="Exchange Travel Planner"
-        subtitle="Plan weekend trips without losing track of budget, deadlines, and group details."
-      />
+      <div>
+        <p className="text-body text-muted">Good to see you 👋</p>
+        <h1 className="text-display text-heading">Travel Planner</h1>
+      </div>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-2 gap-3">
         <KpiCard
-          label="Projected spend"
-          value={`EUR ${forecast.projectedMonthlySpend.toFixed(0)}`}
-          hint="Current month including trips"
+          label="Projected"
+          value={`€${forecast.projectedMonthlySpend.toFixed(0)}`}
+          hint="This month"
+          icon="📊"
+          affordability={forecast.affordability}
         />
         <KpiCard
           label="Remaining"
-          value={`EUR ${forecast.remainingBudget.toFixed(0)}`}
-          hint={`Budget status: ${forecast.affordability}`}
-        />
-        <KpiCard
-          label="Next safe window"
-          value={nextWindow ? `${nextWindow.startDate} to ${nextWindow.endDate}` : 'No windows'}
-          hint={nextWindow ? `Score ${nextWindow.score}` : 'Import your calendar'}
+          value={`€${forecast.remainingBudget.toFixed(0)}`}
+          hint={affordabilityBadge.label}
+          icon="💰"
+          affordability={forecast.affordability}
         />
       </section>
 
-      <section className="card space-y-3">
-        <h2 className="text-lg font-semibold">Quick Actions</h2>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Link href="/discover" className="button text-center">
-            Run Weekend Optimizer
+      {nextWindow ? (
+        <Card shadow="raised" className="relative overflow-hidden">
+          <div className="absolute right-4 top-4">
+            <Badge variant="info">Score {nextWindow.score}</Badge>
+          </div>
+          <p className="text-caption font-medium uppercase tracking-wider text-muted">Next travel window</p>
+          <p className="mt-2 text-h2 text-heading">
+            {formatDate(nextWindow.startDate)} — {formatDate(nextWindow.endDate)}
+          </p>
+          <p className="mt-1 text-small text-muted">Best upcoming window for a trip</p>
+          <Link
+            href="/calendar"
+            className="mt-3 inline-block text-small font-medium text-primary hover:underline"
+          >
+            View all windows →
           </Link>
-          <Link href="/calendar" className="button-secondary text-center">
-            Review Academic Conflicts
-          </Link>
-        </div>
+        </Card>
+      ) : null}
+
+      <section className="grid grid-cols-2 gap-3">
+        <Link href="/discover" className="button-accent text-center">
+          🧭 Find Trips
+        </Link>
+        <Link href="/calendar" className="button-secondary text-center">
+          📅 Calendar
+        </Link>
       </section>
     </div>
   );
