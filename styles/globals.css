@@ -3,35 +3,91 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f4f7fb;
-  --fg: #0b1324;
+  --bg: #FAFAF8;
+  --fg: #37352F;
+  --heading: #1A1A1A;
+  --muted: #9B9B9B;
+  --border: #E8E5E0;
+  --surface: #F5F5F3;
+  --primary: #0A84FF;
+  --accent: #FF6B4A;
 }
 
-html,
-body {
+html, body {
   margin: 0;
   padding: 0;
-  background: radial-gradient(circle at top right, #d7f0ef, #f4f7fb 40%);
+  background: var(--bg);
   color: var(--fg);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
 }
 
 * {
   box-sizing: border-box;
 }
 
+/* Cards */
 .card {
-  @apply rounded-2xl bg-white/90 shadow-sm border border-slate-100 p-4;
+  @apply rounded-lg bg-white p-4 shadow-medium;
 }
 
+/* Inputs */
 .input {
-  @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none;
+  @apply w-full rounded-md border border-neutral-200 bg-white px-3 py-2.5 text-body text-body
+    transition-all duration-150
+    focus:border-primary focus:shadow-focus focus:outline-none
+    placeholder:text-muted;
 }
 
+/* Buttons */
 .button {
-  @apply rounded-xl bg-ink px-4 py-2 text-sm font-medium text-white hover:opacity-95;
+  @apply inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-small font-medium text-white
+    transition-all duration-150 hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .button-secondary {
-  @apply rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-ink;
+  @apply inline-flex items-center justify-center rounded-md border border-primary bg-white px-6 py-2.5 text-small font-medium text-primary
+    transition-all duration-150 hover:bg-primary-50 active:scale-[0.98];
+}
+
+.button-ghost {
+  @apply inline-flex items-center justify-center rounded-md bg-transparent px-6 py-2.5 text-small font-medium text-primary
+    transition-all duration-150 hover:bg-primary-50 active:scale-[0.98];
+}
+
+.button-danger {
+  @apply inline-flex items-center justify-center rounded-md bg-danger px-6 py-2.5 text-small font-medium text-white
+    transition-all duration-150 hover:opacity-90 active:scale-[0.98];
+}
+
+.button-accent {
+  @apply inline-flex items-center justify-center rounded-md bg-accent px-6 py-2.5 text-small font-medium text-white
+    transition-all duration-150 hover:opacity-90 active:scale-[0.98];
+}
+
+/* Badges */
+.badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-caption font-medium;
+}
+
+.badge-safe {
+  @apply badge;
+  background: rgba(52,199,89,0.12);
+  color: #248A3D;
+}
+
+.badge-warning {
+  @apply badge;
+  background: rgba(255,179,64,0.15);
+  color: #A05A00;
+}
+
+.badge-danger {
+  @apply badge;
+  background: rgba(255,59,48,0.12);
+  color: #D70015;
+}
+
+.badge-info {
+  @apply badge;
+  background: rgba(10,132,255,0.1);
+  color: #0A84FF;
 }

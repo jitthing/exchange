@@ -1,9 +1,28 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SectionTitle } from '@/components/section-title';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select } from '@/components/ui/select';
 import { evaluateConflicts, getTravelWindows } from '@/lib/api';
 import { ConflictAlert, TravelWindow } from '@/lib/types';
+
+function scoreBadgeVariant(score: number) {
+  if (score >= 80) return 'safe' as const;
+  if (score >= 50) return 'warning' as const;
+  return 'danger' as const;
+}
+
+function severityBadgeVariant(severity: string) {
+  if (severity === 'high-risk') return 'danger' as const;
+  if (severity === 'warning') return 'warning' as const;
+  return 'info' as const;
+}
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 export default function CalendarPage() {
   const [windows, setWindows] = useState<TravelWindow[]>([]);
@@ -28,44 +47,69 @@ export default function CalendarPage() {
   }, [selected]);
 
   return (
-    <div className="space-y-4">
-      <SectionTitle title="Calendar Sync" subtitle="Detected travel windows and study overlap checks." />
+    <div className="space-y-6">
+      <SectionHeader title="Calendar" subtitle="Travel windows and academic conflicts" />
 
-      {error ? <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <div className="badge-danger rounded-md p-3 text-small">{error}</div>
+      ) : null}
 
-      <section className="card space-y-3">
-        <label className="text-sm font-medium" htmlFor="window">
-          Travel window
-        </label>
-        <select
-          id="window"
-          className="input"
+      <Card>
+        <Select
+          label="Travel window"
           value={selected}
-          onChange={(event) => setSelected(event.target.value)}
+          onChange={(e) => setSelected(e.target.value)}
         >
-          {windows.map((window) => (
-            <option key={window.id} value={window.id}>
-              {window.startDate} to {window.endDate} (score {window.score})
+          {windows.map((w) => (
+            <option key={w.id} value={w.id}>
+              {formatDate(w.startDate)} — {formatDate(w.endDate)}
             </option>
           ))}
-        </select>
-      </section>
+        </Select>
+      </Card>
 
-      <section className="card">
-        <h2 className="text-lg font-semibold">Conflict Alerts</h2>
+      {/* Window cards */}
+      <div className="space-y-3">
+        {windows.map((w) => (
+          <Card
+            key={w.id}
+            className={`cursor-pointer transition-all ${selected === w.id ? 'ring-2 ring-primary/30' : ''}`}
+            shadow={selected === w.id ? 'raised' : 'subtle'}
+            onClick={() => setSelected(w.id)}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-h3 text-heading">
+                  {formatDate(w.startDate)} — {formatDate(w.endDate)}
+                </p>
+                <p className="mt-0.5 text-caption text-muted">{w.conflicts.length} potential conflicts</p>
+              </div>
+              <Badge variant={scoreBadgeVariant(w.score)}>{w.score}</Badge>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Conflict alerts */}
+      <div>
+        <h2 className="mb-3 text-h3 text-heading">Conflict Alerts</h2>
         {alerts.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-600">No conflicts in selected window.</p>
+          <Card shadow="subtle">
+            <p className="text-center text-small text-muted">✅ No conflicts in this window</p>
+          </Card>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <div className="space-y-2">
             {alerts.map((alert) => (
-              <li key={alert.relatedEventId} className="rounded-xl border border-slate-200 p-3">
-                <p className="text-sm font-semibold capitalize">{alert.severity}</p>
-                <p className="text-sm text-slate-600">{alert.reason}</p>
-              </li>
+              <Card key={alert.relatedEventId} shadow="subtle">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-small text-body">{alert.reason}</p>
+                  <Badge variant={severityBadgeVariant(alert.severity)}>{alert.severity}</Badge>
+                </div>
+              </Card>
             ))}
-          </ul>
+          </div>
         )}
-      </section>
+      </div>
     </div>
   );
 }

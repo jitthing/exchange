@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SectionTitle } from '@/components/section-title';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { createBudgetEntry, getBudgetEntries, getForecast } from '@/lib/api';
 import { BudgetEntry, ForecastResult } from '@/lib/types';
 
@@ -13,6 +18,18 @@ const formSeed = {
   date: new Date().toISOString().slice(0, 10),
   note: ''
 };
+
+function affordabilityColor(a: string) {
+  if (a === 'green') return 'bg-success-50';
+  if (a === 'amber') return 'bg-warning-50';
+  return 'bg-danger-50';
+}
+
+function affordabilityBadge(a: string) {
+  if (a === 'green') return 'safe' as const;
+  if (a === 'amber') return 'warning' as const;
+  return 'danger' as const;
+}
 
 export default function BudgetPage() {
   const [entries, setEntries] = useState<BudgetEntry[]>([]);
@@ -31,21 +48,13 @@ export default function BudgetPage() {
     }
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   function validateBudget(): boolean {
     const errors: Record<string, string> = {};
-    if (!form.category) {
-      errors.category = 'Category is required.';
-    }
-    if (Number(form.amount) <= 0) {
-      errors.amount = 'Amount must be greater than 0.';
-    }
-    if (!form.date) {
-      errors.date = 'Date is required.';
-    }
+    if (!form.category) errors.category = 'Category is required.';
+    if (Number(form.amount) <= 0) errors.amount = 'Amount must be greater than 0.';
+    if (!form.date) errors.date = 'Date is required.';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -63,84 +72,99 @@ export default function BudgetPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <SectionTitle title="Budget Tracker" subtitle="Keep travel and living expenses separate." />
+    <div className="space-y-6">
+      <SectionHeader title="Budget" subtitle="Track living and travel expenses" />
 
       {forecast ? (
-        <section className="card grid grid-cols-3 gap-2 text-center">
-          <div>
-            <p className="text-xs text-slate-500">Projected</p>
-            <p className="text-lg font-semibold">EUR {forecast.projectedMonthlySpend.toFixed(0)}</p>
+        <Card className={`${affordabilityColor(forecast.affordability)} border-0`} shadow="subtle">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-caption text-muted">Projected</p>
+              <p className="mt-1 text-h3 font-semibold text-heading">€{forecast.projectedMonthlySpend.toFixed(0)}</p>
+            </div>
+            <div>
+              <p className="text-caption text-muted">Remaining</p>
+              <p className="mt-1 text-h3 font-semibold text-heading">€{forecast.remainingBudget.toFixed(0)}</p>
+            </div>
+            <div>
+              <p className="text-caption text-muted">Status</p>
+              <div className="mt-2">
+                <Badge variant={affordabilityBadge(forecast.affordability)}>
+                  {forecast.affordability}
+                </Badge>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-slate-500">Remaining</p>
-            <p className="text-lg font-semibold">EUR {forecast.remainingBudget.toFixed(0)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Status</p>
-            <p className="text-lg font-semibold capitalize">{forecast.affordability}</p>
-          </div>
-        </section>
+        </Card>
       ) : null}
 
-      <form className="card space-y-3" onSubmit={onSubmit}>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <select
-              className={`input ${fieldErrors.category ? 'border-red-400' : ''}`}
+      <Card title="Add Entry">
+        <form className="space-y-3" onSubmit={onSubmit}>
+          <div className="grid grid-cols-2 gap-3">
+            <Select
+              label="Category"
               value={form.category}
-              onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))}
+              error={fieldErrors.category}
+              onChange={(e) => setForm((old) => ({ ...old, category: e.target.value }))}
             >
               <option value="living">Living</option>
               <option value="travel">Travel</option>
-            </select>
-            {fieldErrors.category && <p className="mt-1 text-xs text-red-600">{fieldErrors.category}</p>}
-          </div>
-          <div>
-            <input
-              className={`input ${fieldErrors.amount ? 'border-red-400' : ''}`}
+            </Select>
+            <Input
+              label="Amount (€)"
               type="number"
               min={0}
-              placeholder="Amount"
               value={form.amount}
-              onChange={(event) => setForm((old) => ({ ...old, amount: Number(event.target.value) }))}
+              error={fieldErrors.amount}
+              onChange={(e) => setForm((old) => ({ ...old, amount: Number(e.target.value) }))}
             />
-            {fieldErrors.amount && <p className="mt-1 text-xs text-red-600">{fieldErrors.amount}</p>}
           </div>
-        </div>
-        <input
-          className={`input ${fieldErrors.date ? 'border-red-400' : ''}`}
-          type="date"
-          value={form.date}
-          onChange={(event) => setForm((old) => ({ ...old, date: event.target.value }))}
-        />
-        {fieldErrors.date && <p className="mt-1 text-xs text-red-600">{fieldErrors.date}</p>}
-        <input
-          className="input"
-          placeholder="Note"
-          value={form.note}
-          onChange={(event) => setForm((old) => ({ ...old, note: event.target.value }))}
-        />
-        <button className="button" type="submit">
-          Add entry
-        </button>
-      </form>
+          <Input
+            label="Date"
+            type="date"
+            value={form.date}
+            error={fieldErrors.date}
+            onChange={(e) => setForm((old) => ({ ...old, date: e.target.value }))}
+          />
+          <Input
+            label="Note"
+            placeholder="Optional note"
+            value={form.note}
+            onChange={(e) => setForm((old) => ({ ...old, note: e.target.value }))}
+          />
+          <Button type="submit" className="w-full">Add Entry</Button>
+        </form>
+      </Card>
 
-      <section className="card">
-        <h2 className="text-lg font-semibold">Recent entries</h2>
-        {entries.length === 0 ? <p className="mt-2 text-sm text-slate-600">No entries yet.</p> : null}
-        <ul className="mt-3 space-y-2">
-          {entries.map((entry) => (
-            <li key={entry.id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3 text-sm">
-              <span className="capitalize">{entry.category}</span>
-              <span>EUR {entry.amount.toFixed(0)}</span>
-              <span className="text-slate-500">{entry.date}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div>
+        <h2 className="mb-3 text-h3 text-heading">Recent Entries</h2>
+        {entries.length === 0 ? (
+          <Card shadow="subtle">
+            <p className="text-center text-small text-muted">No entries yet</p>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {entries.map((entry) => (
+              <Card key={entry.id} shadow="subtle">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={entry.category === 'travel' ? 'info' : 'safe'}>
+                      {entry.category}
+                    </Badge>
+                    {entry.note ? <span className="text-small text-body">{entry.note}</span> : null}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-small font-semibold text-heading">€{entry.amount.toFixed(0)}</p>
+                    <p className="text-caption text-muted">{entry.date}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
-      {error ? <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      {error ? <div className="badge-danger rounded-md p-3 text-small">{error}</div> : null}
     </div>
   );
 }

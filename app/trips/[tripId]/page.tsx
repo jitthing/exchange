@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
-import { SectionTitle } from '@/components/section-title';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { API_BASE_URL } from '@/lib/config';
 
 type Trip = {
@@ -26,31 +28,50 @@ export default async function TripDetailPage({ params }: PageProps) {
   if (!trip) return notFound();
 
   return (
-    <div className="space-y-4">
-      <SectionTitle title={`${trip.destination} Trip`} subtitle="Shared itinerary, members, and estimated spend." />
-      <section className="card">
-        <p className="text-sm text-slate-600">Estimated cost: EUR {trip.estimatedCost.toFixed(0)}</p>
-      </section>
-      <section className="card">
-        <h2 className="text-lg font-semibold">Itinerary</h2>
-        <ul className="mt-2 space-y-2 text-sm text-slate-700">
-          {trip.itinerary.map((item) => (
-            <li key={item} className="rounded-xl border border-slate-200 px-3 py-2">
-              {item}
-            </li>
+    <div className="space-y-6">
+      <SectionHeader title={`${trip.destination}`} subtitle="Trip details and itinerary" />
+
+      <Card shadow="raised">
+        <div className="flex items-center justify-between">
+          <p className="text-caption font-medium uppercase tracking-wider text-muted">Estimated Cost</p>
+          <p className="text-h2 font-semibold text-heading">€{trip.estimatedCost.toFixed(0)}</p>
+        </div>
+      </Card>
+
+      <div>
+        <h2 className="mb-3 text-h3 text-heading">Itinerary</h2>
+        <div className="space-y-0">
+          {trip.itinerary.map((item, i) => (
+            <div key={item} className="flex gap-3">
+              <div className="flex flex-col items-center">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-caption font-semibold text-white">
+                  {i + 1}
+                </div>
+                {i < trip.itinerary.length - 1 ? (
+                  <div className="w-0.5 flex-1 bg-neutral-200" />
+                ) : null}
+              </div>
+              <Card shadow="subtle" className="mb-3 flex-1">
+                <p className="text-small text-body">{item}</p>
+              </Card>
+            </div>
           ))}
-        </ul>
-      </section>
-      <section className="card">
-        <h2 className="text-lg font-semibold">Members</h2>
-        <ul className="mt-2 flex flex-wrap gap-2 text-sm">
+        </div>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-h3 text-heading">Members</h2>
+        <div className="flex flex-wrap gap-2">
           {trip.members.map((member) => (
-            <li key={member} className="rounded-full bg-slate-100 px-3 py-1">
-              {member}
-            </li>
+            <span
+              key={member}
+              className="inline-flex items-center rounded-full bg-primary-50 px-3 py-1.5 text-small font-medium text-primary"
+            >
+              👤 {member}
+            </span>
           ))}
-        </ul>
-      </section>
+        </div>
+      </div>
     </div>
   );
 }
