@@ -20,9 +20,26 @@ export default function DiscoverPage() {
   const [results, setResults] = useState<TripOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  function validate(): boolean {
+    const errors: Record<string, string> = {};
+    if (!form.departureCity.trim()) {
+      errors.departureCity = 'Departure city is required.';
+    }
+    if (form.budgetCap <= 0) {
+      errors.budgetCap = 'Budget cap must be greater than 0.';
+    }
+    if (form.maxTravelHours <= 0) {
+      errors.maxTravelHours = 'Max travel hours must be greater than 0.';
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!validate()) return;
     setLoading(true);
     setError('');
     try {
@@ -43,29 +60,32 @@ export default function DiscoverPage() {
         <div>
           <label className="mb-1 block text-sm font-medium">Departure city</label>
           <input
-            className="input"
+            className={`input ${fieldErrors.departureCity ? 'border-red-400' : ''}`}
             value={form.departureCity}
             onChange={(event) => setForm((old) => ({ ...old, departureCity: event.target.value }))}
           />
+          {fieldErrors.departureCity && <p className="mt-1 text-xs text-red-600">{fieldErrors.departureCity}</p>}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-sm font-medium">Budget cap (EUR)</label>
             <input
-              className="input"
+              className={`input ${fieldErrors.budgetCap ? 'border-red-400' : ''}`}
               type="number"
               value={form.budgetCap}
               onChange={(event) => setForm((old) => ({ ...old, budgetCap: Number(event.target.value) }))}
             />
+            {fieldErrors.budgetCap && <p className="mt-1 text-xs text-red-600">{fieldErrors.budgetCap}</p>}
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium">Max travel hours</label>
             <input
-              className="input"
+              className={`input ${fieldErrors.maxTravelHours ? 'border-red-400' : ''}`}
               type="number"
               value={form.maxTravelHours}
               onChange={(event) => setForm((old) => ({ ...old, maxTravelHours: Number(event.target.value) }))}
             />
+            {fieldErrors.maxTravelHours && <p className="mt-1 text-xs text-red-600">{fieldErrors.maxTravelHours}</p>}
           </div>
         </div>
         <button className="button" type="submit" disabled={loading}>
