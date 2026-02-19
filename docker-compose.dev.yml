@@ -1,0 +1,12 @@
+## Dev override — run Flyway against Supabase (or any remote Postgres).
+## Usage: docker compose -f docker-compose.dev.yml run --rm flyway
+##
+## Requires DATABASE_URL env var, e.g.:
+##   DATABASE_URL=jdbc:postgresql://host:5432/db?user=u&password=p docker compose -f docker-compose.dev.yml run --rm flyway
+
+services:
+  flyway:
+    image: flyway/flyway:10
+    command: -url=${DATABASE_URL} migrate
+    volumes:
+      - ./backend/migrations:/flyway/sql
