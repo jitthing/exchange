@@ -336,6 +336,8 @@ func (s *Store) SearchStays(city string) []domain.StayOption {
 	return []domain.StayOption{}
 }
 
+func (s *Store) Close() error { return nil }
+
 func round(value float64, precision int) float64 {
 	factor := math.Pow10(precision)
 	return math.Round(value*factor) / factor

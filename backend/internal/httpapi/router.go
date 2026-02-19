@@ -6,14 +6,13 @@ import (
 	"strings"
 
 	"exchange-travel-planner/backend/internal/domain"
-	"exchange-travel-planner/backend/internal/store"
 )
 
 type Server struct {
-	store *store.Store
+	store domain.DataStore
 }
 
-func NewServer(s *store.Store) *Server {
+func NewServer(s domain.DataStore) *Server {
 	return &Server{store: s}
 }
 

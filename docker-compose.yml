@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: exchange_dev
+      POSTGRES_USER: exchange
+      POSTGRES_PASSWORD: exchange_local
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exchange -d exchange_dev"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  flyway:
+    image: flyway/flyway:10
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: -url=jdbc:postgresql://postgres:5432/exchange_dev -user=exchange -password=exchange_local migrate
+    volumes:
+      - ./backend/migrations:/flyway/sql
+
+volumes:
+  pgdata:
