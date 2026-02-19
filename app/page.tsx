@@ -20,7 +20,7 @@ type TravelWindow = {
 
 async function getData(): Promise<{ forecast: Forecast; windows: TravelWindow[] }> {
   const [forecastResponse, windowsResponse] = await Promise.all([
-    fetch(`${API_BASE_URL}/api/budget/forecast?userId=demo-user`, { cache: 'no-store' }),
+    fetch(`${API_BASE_URL}/api/budget/forecast`, { cache: 'no-store' }),
     fetch(`${API_BASE_URL}/api/travel-windows`, { cache: 'no-store' })
   ]);
 
@@ -47,7 +47,7 @@ export default async function HomePage() {
     <div className="space-y-6">
       <div>
         <p className="text-body text-muted">Good to see you 👋</p>
-        <h1 className="text-display text-heading">Travel Planner</h1>
+        <h1 data-testid="page-title" className="text-display text-heading">Travel Planner</h1>
       </div>
 
       <section className="grid grid-cols-2 gap-3">

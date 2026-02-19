@@ -72,6 +72,7 @@ export function BottomNav() {
             <Link
               key={tab.href}
               href={tab.href}
+              data-testid={`nav-${tab.label.toLowerCase()}`}
               className={`flex flex-col items-center gap-0.5 rounded-lg py-2 text-[11px] font-medium transition-colors ${
                 isActive ? 'text-primary' : 'text-muted hover:text-neutral-700'
               }`}

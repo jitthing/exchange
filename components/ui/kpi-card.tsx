@@ -27,7 +27,7 @@ export function KpiCard({ label, value, hint, affordability, icon }: KpiCardProp
   const valueColor = affordability ? affordabilityValueColor[affordability] : 'text-heading';
 
   return (
-    <article className={`rounded-lg p-4 ${bgClass}`}>
+    <article data-testid="kpi-card" className={`rounded-lg p-4 ${bgClass}`}>
       <div className="flex items-center gap-2">
         {icon ? <span className="text-lg">{icon}</span> : null}
         <p className="text-caption font-medium uppercase tracking-wider text-muted">{label}</p>
