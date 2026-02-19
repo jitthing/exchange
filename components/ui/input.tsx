@@ -23,7 +23,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           className={`input ${error ? 'border-danger' : ''} ${className}`}
           {...props}
         />
-        {error ? <p className="text-caption text-danger-600">{error}</p> : null}
+        {error ? <p data-testid="field-error" className="text-caption text-danger-600">{error}</p> : null}
       </div>
     );
   }

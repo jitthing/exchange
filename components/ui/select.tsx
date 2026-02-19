@@ -25,7 +25,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         >
           {children}
         </select>
-        {error ? <p className="text-caption text-danger-600">{error}</p> : null}
+        {error ? <p data-testid="field-error" className="text-caption text-danger-600">{error}</p> : null}
       </div>
     );
   }

@@ -47,7 +47,7 @@ export default async function HomePage() {
     <div className="space-y-6">
       <div>
         <p className="text-body text-muted">Good to see you 👋</p>
-        <h1 className="text-display text-heading">Travel Planner</h1>
+        <h1 data-testid="page-title" className="text-display text-heading">Travel Planner</h1>
       </div>
 
       <section className="grid grid-cols-2 gap-3">

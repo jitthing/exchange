@@ -99,7 +99,7 @@ export default function BudgetPage() {
       ) : null}
 
       <Card title="Add Entry">
-        <form className="space-y-3" onSubmit={onSubmit}>
+        <form data-testid="budget-form" className="space-y-3" onSubmit={onSubmit}>
           <div className="grid grid-cols-2 gap-3">
             <Select
               label="Category"
@@ -132,12 +132,13 @@ export default function BudgetPage() {
             value={form.note}
             onChange={(e) => setForm((old) => ({ ...old, note: e.target.value }))}
           />
-          <Button type="submit" className="w-full">Add Entry</Button>
+          <Button type="submit" className="w-full" data-testid="budget-submit">Add Entry</Button>
         </form>
       </Card>
 
       <div>
         <h2 className="mb-3 text-h3 text-heading">Recent Entries</h2>
+        <div data-testid="budget-entries">
         {entries.length === 0 ? (
           <Card shadow="subtle">
             <p className="text-center text-small text-muted">No entries yet</p>
@@ -162,6 +163,7 @@ export default function BudgetPage() {
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {error ? <div className="badge-danger rounded-md p-3 text-small">{error}</div> : null}
