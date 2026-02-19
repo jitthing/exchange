@@ -39,6 +39,7 @@ package-lock.json
 
 # Playwright MCP logs
 .playwright-mcp/
+.github/
 node_modules/
 
 playwright-report/
