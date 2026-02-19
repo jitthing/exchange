@@ -61,7 +61,7 @@ export default function DiscoverPage() {
       <SectionHeader title="Discover" subtitle="Find your next weekend trip" />
 
       <Card>
-        <form className="space-y-4" onSubmit={onSubmit}>
+        <form data-testid="discover-form" className="space-y-4" onSubmit={onSubmit}>
           <Input
             label="Departure city"
             value={form.departureCity}
@@ -84,14 +84,14 @@ export default function DiscoverPage() {
               onChange={(e) => setForm((old) => ({ ...old, maxTravelHours: Number(e.target.value) }))}
             />
           </div>
-          <Button type="submit" variant="accent" loading={loading} className="w-full">
+          <Button type="submit" variant="accent" loading={loading} className="w-full" data-testid="discover-submit">
             🧭 Find Trips
           </Button>
           {error ? <p className="text-small text-danger">{error}</p> : null}
         </form>
       </Card>
 
-      <div className="space-y-3">
+      <div data-testid="trip-results" className="space-y-3">
         {results.map((option) => (
           <Card key={option.id} shadow="medium">
             <div className="flex items-start justify-between">
