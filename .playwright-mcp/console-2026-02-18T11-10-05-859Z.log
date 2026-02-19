@@ -1,4 +1,0 @@
-[    1062ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
-[  174947ms] [ERROR] Failed to load resource: the server responded with a status of 409 () @ https://mcp.figma.com/mcp/capture/57d97798-15cf-43cb-b0ea-d380d52791dd/submit:0
-[  174948ms] [ERROR] [Figma Capture] Server error (409): Capture already submitted. Please start a new capture. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
-[  174948ms] [ERROR] [Figma Capture] Error: Capture already submitted. Please start a new capture. @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
