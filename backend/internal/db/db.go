@@ -1,26 +1,32 @@
 package db
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 const defaultDSN = "postgres://exchange:exchange_local@localhost:5432/exchange_dev?sslmode=disable"
 
-// Connect creates a pgx connection pool. If dsn is empty, uses the local Docker default.
-func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
+// Connect opens a GORM connection to PostgreSQL. If dsn is empty, uses the local Docker default.
+func Connect(dsn string) (*gorm.DB, error) {
 	if dsn == "" {
 		dsn = defaultDSN
 	}
-	pool, err := pgxpool.New(ctx, dsn)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Warn),
+	})
 	if err != nil {
-		return nil, fmt.Errorf("pgxpool.New: %w", err)
+		return nil, fmt.Errorf("gorm.Open: %w", err)
 	}
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("db.DB(): %w", err)
+	}
+	if err := sqlDB.Ping(); err != nil {
 		return nil, fmt.Errorf("ping: %w", err)
 	}
-	return pool, nil
+	return db, nil
 }

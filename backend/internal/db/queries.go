@@ -1,132 +1,96 @@
 package db
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
 	"sort"
-	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 
 	"exchange-travel-planner/backend/internal/domain"
 )
 
-// PgStore implements domain.DataStore backed by PostgreSQL.
+// PgStore implements domain.DataStore backed by PostgreSQL via GORM.
 type PgStore struct {
-	pool *pgxpool.Pool
+	db *gorm.DB
 }
 
-func NewPgStore(pool *pgxpool.Pool) *PgStore {
-	return &PgStore{pool: pool}
+func NewPgStore(db *gorm.DB) *PgStore {
+	return &PgStore{db: db}
 }
 
 func (s *PgStore) Close() error {
-	s.pool.Close()
-	return nil
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
 }
 
 func makeID(prefix string) string {
 	return fmt.Sprintf("%s-%06d", prefix, rand.Intn(999999))
 }
 
+func roundF(value float64, precision int) float64 {
+	factor := math.Pow10(precision)
+	return math.Round(value*factor) / factor
+}
+
+// --- Interface implementations ---
+
 func (s *PgStore) ImportAcademicEvents(events []domain.AcademicEvent) []domain.AcademicEvent {
-	ctx := context.Background()
 	for _, e := range events {
 		if e.ID == "" {
 			e.ID = makeID("ev")
 		}
-		_, _ = s.pool.Exec(ctx,
-			`INSERT INTO academic_events (id, type, title, start_date, end_date, priority)
-			 VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING`,
-			e.ID, string(e.Type), e.Title, e.Start, e.End, e.Priority)
+		m := AcademicEventModel{
+			ID: e.ID, Type: string(e.Type), Title: e.Title,
+			StartDate: e.Start, EndDate: e.End, Priority: e.Priority,
+		}
+		s.db.Where("id = ?", m.ID).FirstOrCreate(&m)
 	}
-	rows, err := s.pool.Query(ctx, `SELECT id, type, title, start_date, end_date, priority FROM academic_events ORDER BY start_date`)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var result []domain.AcademicEvent
-	for rows.Next() {
-		var ev domain.AcademicEvent
-		var t string
-		_ = rows.Scan(&ev.ID, &t, &ev.Title, &ev.Start, &ev.End, &ev.Priority)
-		ev.Type = domain.AcademicEventType(t)
-		result = append(result, ev)
+	var models []AcademicEventModel
+	s.db.Order("start_date").Find(&models)
+	result := make([]domain.AcademicEvent, len(models))
+	for i, m := range models {
+		result[i] = domain.AcademicEvent{
+			ID: m.ID, Type: domain.AcademicEventType(m.Type), Title: m.Title,
+			Start: m.StartDate, End: m.EndDate, Priority: m.Priority,
+		}
 	}
 	return result
 }
 
 func (s *PgStore) ListTravelWindows(from, to string) []domain.TravelWindow {
-	ctx := context.Background()
-	query := `SELECT id, start_date, end_date, score, conflicts FROM travel_windows WHERE 1=1`
-	args := []any{}
-	n := 0
+	q := s.db.Model(&TravelWindowModel{})
 	if from != "" {
-		n++
-		query += fmt.Sprintf(` AND end_date >= $%d`, n)
-		args = append(args, from)
+		q = q.Where("end_date >= ?", from)
 	}
 	if to != "" {
-		n++
-		query += fmt.Sprintf(` AND start_date <= $%d`, n)
-		args = append(args, to)
+		q = q.Where("start_date <= ?", to)
 	}
-	query += ` ORDER BY start_date`
-	rows, err := s.pool.Query(ctx, query, args...)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var result []domain.TravelWindow
-	for rows.Next() {
-		var w domain.TravelWindow
-		var conflictsJSON []byte
-		_ = rows.Scan(&w.ID, &w.StartDate, &w.EndDate, &w.Score, &conflictsJSON)
-		_ = json.Unmarshal(conflictsJSON, &w.Conflicts)
-		if w.Conflicts == nil {
-			w.Conflicts = []string{}
+	var models []TravelWindowModel
+	q.Order("start_date").Find(&models)
+	result := make([]domain.TravelWindow, len(models))
+	for i, m := range models {
+		conflicts := []string(m.Conflicts)
+		if conflicts == nil {
+			conflicts = []string{}
 		}
-		result = append(result, w)
-	}
-	if result == nil {
-		result = []domain.TravelWindow{}
+		result[i] = domain.TravelWindow{
+			ID: m.ID, StartDate: m.StartDate, EndDate: m.EndDate,
+			Score: m.Score, Conflicts: conflicts,
+		}
 	}
 	return result
 }
 
-type destRow struct {
-	City           string
-	BaseTravelHrs  float64
-	TransportBase  float64
-	HostelNightEUR float64
-	Tags           []string
-}
-
-func (s *PgStore) loadDestinations() []destRow {
-	ctx := context.Background()
-	rows, err := s.pool.Query(ctx, `SELECT city, base_travel_hrs, transport_base, hostel_night_eur, tags FROM destinations`)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var out []destRow
-	for rows.Next() {
-		var d destRow
-		var tagsJSON []byte
-		_ = rows.Scan(&d.City, &d.BaseTravelHrs, &d.TransportBase, &d.HostelNightEUR, &tagsJSON)
-		_ = json.Unmarshal(tagsJSON, &d.Tags)
-		out = append(out, d)
-	}
-	return out
-}
-
-func roundF(value float64, precision int) float64 {
-	factor := math.Pow10(precision)
-	return math.Round(value*factor) / factor
+func (s *PgStore) loadDestinations() []DestinationModel {
+	var dests []DestinationModel
+	s.db.Find(&dests)
+	return dests
 }
 
 func (s *PgStore) OptimizeTrips(c domain.TripConstraint) []domain.TripOption {
@@ -206,22 +170,18 @@ func (s *PgStore) OptimizeTrips(c domain.TripConstraint) []domain.TripOption {
 }
 
 func (s *PgStore) GetTrip(id string) *domain.Trip {
-	ctx := context.Background()
-	var t domain.Trip
-	var membersJSON, itineraryJSON []byte
-	err := s.pool.QueryRow(ctx,
-		`SELECT id, owner_id, destination, window_id, members, itinerary, estimated_cost FROM trips WHERE id=$1`, id).
-		Scan(&t.ID, &t.OwnerID, &t.Destination, &t.WindowID, &membersJSON, &itineraryJSON, &t.EstimatedCost)
-	if err != nil {
+	var m TripModel
+	if err := s.db.First(&m, "id = ?", id).Error; err != nil {
 		return nil
 	}
-	_ = json.Unmarshal(membersJSON, &t.Members)
-	_ = json.Unmarshal(itineraryJSON, &t.Itinerary)
-	return &t
+	return &domain.Trip{
+		ID: m.ID, OwnerID: m.OwnerID, Destination: m.Destination,
+		WindowID: m.WindowID, Members: []string(m.Members),
+		Itinerary: []string(m.Itinerary), EstimatedCost: m.EstimatedCost,
+	}
 }
 
 func (s *PgStore) ShareTrip(tripID string, memberIDs []string) *domain.Trip {
-	ctx := context.Background()
 	t := s.GetTrip(tripID)
 	if t == nil {
 		return nil
@@ -240,38 +200,32 @@ func (s *PgStore) ShareTrip(tripID string, memberIDs []string) *domain.Trip {
 		merged = append(merged, m)
 	}
 	sort.Strings(merged)
-	membersJSON, _ := json.Marshal(merged)
-	_, _ = s.pool.Exec(ctx, `UPDATE trips SET members=$1 WHERE id=$2`, membersJSON, tripID)
+	s.db.Model(&TripModel{}).Where("id = ?", tripID).Update("members", JSONStringSlice(merged))
 	t.Members = merged
 	return t
 }
 
 func (s *PgStore) AddBudgetEntry(entry domain.BudgetEntry) domain.BudgetEntry {
-	ctx := context.Background()
 	entry.ID = makeID("b")
-	_, _ = s.pool.Exec(ctx,
-		`INSERT INTO budget_entries (id, user_id, category, amount, currency, date, trip_id, note)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-		entry.ID, entry.UserID, entry.Category, entry.Amount, entry.Currency, entry.Date, entry.TripID, entry.Note)
+	m := BudgetEntryModel{
+		ID: entry.ID, UserID: entry.UserID, Category: entry.Category,
+		Amount: entry.Amount, Currency: entry.Currency, Date: entry.Date,
+		TripID: entry.TripID, Note: entry.Note,
+	}
+	s.db.Create(&m)
 	return entry
 }
 
 func (s *PgStore) ListBudgetEntries(userID string) []domain.BudgetEntry {
-	ctx := context.Background()
-	rows, err := s.pool.Query(ctx,
-		`SELECT id, user_id, category, amount, currency, date, COALESCE(trip_id,''), COALESCE(note,'') FROM budget_entries WHERE user_id=$1 ORDER BY date`, userID)
-	if err != nil {
-		return []domain.BudgetEntry{}
-	}
-	defer rows.Close()
-	var result []domain.BudgetEntry
-	for rows.Next() {
-		var e domain.BudgetEntry
-		_ = rows.Scan(&e.ID, &e.UserID, &e.Category, &e.Amount, &e.Currency, &e.Date, &e.TripID, &e.Note)
-		result = append(result, e)
-	}
-	if result == nil {
-		result = []domain.BudgetEntry{}
+	var models []BudgetEntryModel
+	s.db.Where("user_id = ?", userID).Order("date").Find(&models)
+	result := make([]domain.BudgetEntry, len(models))
+	for i, m := range models {
+		result[i] = domain.BudgetEntry{
+			ID: m.ID, UserID: m.UserID, Category: m.Category,
+			Amount: m.Amount, Currency: m.Currency, Date: m.Date,
+			TripID: m.TripID, Note: m.Note,
+		}
 	}
 	return result
 }
@@ -283,17 +237,15 @@ func (s *PgStore) Forecast(userID, tripID string) domain.ForecastResult {
 		spend += e.Amount
 	}
 
-	ctx := context.Background()
-	var budget float64
-	err := s.pool.QueryRow(ctx, `SELECT budget FROM monthly_budgets WHERE user_id=$1`, userID).Scan(&budget)
-	if err != nil || budget == 0 {
-		budget = 900
+	var mb MonthlyBudgetModel
+	budget := 900.0
+	if err := s.db.First(&mb, "user_id = ?", userID).Error; err == nil && mb.Budget > 0 {
+		budget = mb.Budget
 	}
 
 	tripCost := 0.0
 	if tripID != "" {
-		t := s.GetTrip(tripID)
-		if t != nil {
+		if t := s.GetTrip(tripID); t != nil {
 			tripCost = t.EstimatedCost
 		}
 	}
@@ -313,39 +265,32 @@ func (s *PgStore) Forecast(userID, tripID string) domain.ForecastResult {
 }
 
 func (s *PgStore) EvaluateConflicts(windowID string) []domain.ConflictAlert {
-	ctx := context.Background()
-	var startDate, endDate string
-	err := s.pool.QueryRow(ctx, `SELECT start_date, end_date FROM travel_windows WHERE id=$1`, windowID).Scan(&startDate, &endDate)
-	if err != nil {
+	var w TravelWindowModel
+	if err := s.db.First(&w, "id = ?", windowID).Error; err != nil {
 		return []domain.ConflictAlert{}
 	}
-	start, _ := time.Parse("2006-01-02", startDate)
-	end, _ := time.Parse("2006-01-02", endDate)
+	start, _ := time.Parse("2006-01-02", w.StartDate)
+	end, _ := time.Parse("2006-01-02", w.EndDate)
 
-	rows, err := s.pool.Query(ctx, `SELECT id, type, title, start_date FROM academic_events`)
-	if err != nil {
-		return []domain.ConflictAlert{}
-	}
-	defer rows.Close()
+	var events []AcademicEventModel
+	s.db.Find(&events)
 
 	var alerts []domain.ConflictAlert
-	for rows.Next() {
-		var id, typ, title, evStart string
-		_ = rows.Scan(&id, &typ, &title, &evStart)
-		eventDate, err := time.Parse("2006-01-02", evStart)
+	for _, ev := range events {
+		eventDate, err := time.Parse("2006-01-02", ev.StartDate)
 		if err != nil || eventDate.Before(start) || eventDate.After(end) {
 			continue
 		}
 		sev := domain.SeverityInfo
-		if typ == "exam" {
+		if ev.Type == "exam" {
 			sev = domain.SeverityHighRisk
-		} else if typ == "deadline" {
+		} else if ev.Type == "deadline" {
 			sev = domain.SeverityWarning
 		}
 		alerts = append(alerts, domain.ConflictAlert{
 			Severity:       sev,
-			Reason:         typ + " overlap: " + title,
-			RelatedEventID: id,
+			Reason:         ev.Type + " overlap: " + ev.Title,
+			RelatedEventID: ev.ID,
 		})
 	}
 	if alerts == nil {
@@ -355,27 +300,23 @@ func (s *PgStore) EvaluateConflicts(windowID string) []domain.ConflictAlert {
 }
 
 func (s *PgStore) SearchTransport(_from, to string) []domain.TransportOption {
-	dests := s.loadDestinations()
-	for _, entry := range dests {
-		if strings.EqualFold(entry.City, to) {
-			return []domain.TransportOption{
-				{Provider: "EuroRail Connect", Mode: "train", DurationHours: entry.BaseTravelHrs, Price: math.Round(entry.TransportBase * 0.9), Deeplink: "https://example.com/train"},
-				{Provider: "SkySaver", Mode: "flight", DurationHours: roundF(entry.BaseTravelHrs*0.65, 1), Price: math.Round(entry.TransportBase * 1.18), Deeplink: "https://example.com/flight"},
-			}
-		}
+	var dest DestinationModel
+	if err := s.db.First(&dest, "LOWER(city) = LOWER(?)", to).Error; err != nil {
+		return []domain.TransportOption{}
 	}
-	return []domain.TransportOption{}
+	return []domain.TransportOption{
+		{Provider: "EuroRail Connect", Mode: "train", DurationHours: dest.BaseTravelHrs, Price: math.Round(dest.TransportBase * 0.9), Deeplink: "https://example.com/train"},
+		{Provider: "SkySaver", Mode: "flight", DurationHours: roundF(dest.BaseTravelHrs*0.65, 1), Price: math.Round(dest.TransportBase * 1.18), Deeplink: "https://example.com/flight"},
+	}
 }
 
 func (s *PgStore) SearchStays(city string) []domain.StayOption {
-	dests := s.loadDestinations()
-	for _, entry := range dests {
-		if strings.EqualFold(entry.City, city) {
-			return []domain.StayOption{
-				{Provider: "HostelGraph", Kind: "hostel", NightlyPrice: entry.HostelNightEUR, Rating: 4.2, Deeplink: "https://example.com/hostel"},
-				{Provider: "StudentStay", Kind: "budget-hotel", NightlyPrice: entry.HostelNightEUR + 14, Rating: 4.0, Deeplink: "https://example.com/hotel"},
-			}
-		}
+	var dest DestinationModel
+	if err := s.db.First(&dest, "LOWER(city) = LOWER(?)", city).Error; err != nil {
+		return []domain.StayOption{}
 	}
-	return []domain.StayOption{}
+	return []domain.StayOption{
+		{Provider: "HostelGraph", Kind: "hostel", NightlyPrice: dest.HostelNightEUR, Rating: 4.2, Deeplink: "https://example.com/hostel"},
+		{Provider: "StudentStay", Kind: "budget-hotel", NightlyPrice: dest.HostelNightEUR + 14, Rating: 4.0, Deeplink: "https://example.com/hotel"},
+	}
 }

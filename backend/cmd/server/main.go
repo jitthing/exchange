@@ -15,6 +15,8 @@ import (
 	"exchange-travel-planner/backend/internal/store"
 )
 
+var _ domain.DataStore = (*db.PgStore)(nil)
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -24,11 +26,11 @@ func main() {
 	var ds domain.DataStore
 
 	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
-		pool, err := db.Connect(context.Background(), dsn)
+		gormDB, err := db.Connect(dsn)
 		if err != nil {
 			log.Fatalf("postgres connect: %v", err)
 		}
-		ds = db.NewPgStore(pool)
+		ds = db.NewPgStore(gormDB)
 		log.Println("using PostgreSQL store")
 	} else {
 		ds = store.New()
