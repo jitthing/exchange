@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"exchange-travel-planner/backend/internal/auth"
 	"exchange-travel-planner/backend/internal/domain"
 )
 
@@ -18,16 +19,24 @@ func NewServer(s domain.DataStore) *Server {
 
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
+
+	// Public routes
 	mux.HandleFunc("/health", s.handleHealth)
-	mux.HandleFunc("/api/calendar/import", s.handleCalendarImport)
-	mux.HandleFunc("/api/travel-windows", s.handleTravelWindows)
-	mux.HandleFunc("/api/trips/optimize", s.handleTripOptimize)
-	mux.HandleFunc("/api/trips/", s.handleTripRoutes)
-	mux.HandleFunc("/api/budget/entries", s.handleBudgetEntries)
-	mux.HandleFunc("/api/budget/forecast", s.handleBudgetForecast)
-	mux.HandleFunc("/api/search/transport", s.handleSearchTransport)
-	mux.HandleFunc("/api/search/stays", s.handleSearchStays)
-	mux.HandleFunc("/api/conflicts/evaluate", s.handleConflicts)
+
+	// Protected API routes — wrapped with RequireAuth
+	apiMux := http.NewServeMux()
+	apiMux.HandleFunc("/api/calendar/import", s.handleCalendarImport)
+	apiMux.HandleFunc("/api/travel-windows", s.handleTravelWindows)
+	apiMux.HandleFunc("/api/trips/optimize", s.handleTripOptimize)
+	apiMux.HandleFunc("/api/trips/", s.handleTripRoutes)
+	apiMux.HandleFunc("/api/budget/entries", s.handleBudgetEntries)
+	apiMux.HandleFunc("/api/budget/forecast", s.handleBudgetForecast)
+	apiMux.HandleFunc("/api/search/transport", s.handleSearchTransport)
+	apiMux.HandleFunc("/api/search/stays", s.handleSearchStays)
+	apiMux.HandleFunc("/api/conflicts/evaluate", s.handleConflicts)
+
+	mux.Handle("/api/", auth.RequireAuth(apiMux))
+
 	return corsMiddleware(mux)
 }
 
@@ -116,11 +125,9 @@ func (s *Server) handleTripRoutes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleBudgetEntries(w http.ResponseWriter, r *http.Request) {
+	userID := auth.UserIDFromContext(r.Context())
+
 	if r.Method == http.MethodGet {
-		userID := r.URL.Query().Get("userId")
-		if userID == "" {
-			userID = "demo-user"
-		}
 		writeJSON(w, http.StatusOK, map[string]any{"entries": s.store.ListBudgetEntries(userID)})
 		return
 	}
@@ -131,9 +138,7 @@ func (s *Server) handleBudgetEntries(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusBadRequest, "invalid json")
 			return
 		}
-		if req.UserID == "" {
-			req.UserID = "demo-user"
-		}
+		req.UserID = userID
 		if req.Currency == "" {
 			req.Currency = "EUR"
 		}
@@ -154,10 +159,7 @@ func (s *Server) handleBudgetForecast(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
-	userID := r.URL.Query().Get("userId")
-	if userID == "" {
-		userID = "demo-user"
-	}
+	userID := auth.UserIDFromContext(r.Context())
 	tripID := r.URL.Query().Get("tripId")
 	writeJSON(w, http.StatusOK, s.store.Forecast(userID, tripID))
 }
@@ -211,7 +213,7 @@ func (s *Server) handleConflicts(w http.ResponseWriter, r *http.Request) {
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

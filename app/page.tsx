@@ -20,7 +20,7 @@ type TravelWindow = {
 
 async function getData(): Promise<{ forecast: Forecast; windows: TravelWindow[] }> {
   const [forecastResponse, windowsResponse] = await Promise.all([
-    fetch(`${API_BASE_URL}/api/budget/forecast?userId=demo-user`, { cache: 'no-store' }),
+    fetch(`${API_BASE_URL}/api/budget/forecast`, { cache: 'no-store' }),
     fetch(`${API_BASE_URL}/api/travel-windows`, { cache: 'no-store' })
   ]);
 

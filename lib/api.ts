@@ -1,11 +1,23 @@
 import { API_BASE_URL } from '@/lib/config';
+import { supabase } from '@/lib/supabase';
 import { BudgetEntry, ConflictAlert, ForecastResult, TravelWindow, Trip, TripConstraint, TripOption } from '@/lib/types';
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (!supabase) return {};
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    return { Authorization: `Bearer ${session.access_token}` };
+  }
+  return {};
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const authHeaders = await getAuthHeaders();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...(init?.headers || {})
     },
     cache: 'no-store'
@@ -34,8 +46,8 @@ export function optimizeTrips(payload: TripConstraint): Promise<{ options: TripO
   });
 }
 
-export function getBudgetEntries(userId = 'demo-user'): Promise<{ entries: BudgetEntry[] }> {
-  return request<{ entries: BudgetEntry[] }>(`/api/budget/entries?userId=${encodeURIComponent(userId)}`);
+export function getBudgetEntries(): Promise<{ entries: BudgetEntry[] }> {
+  return request<{ entries: BudgetEntry[] }>('/api/budget/entries');
 }
 
 export function createBudgetEntry(payload: Omit<BudgetEntry, 'id'>): Promise<BudgetEntry> {
@@ -45,10 +57,11 @@ export function createBudgetEntry(payload: Omit<BudgetEntry, 'id'>): Promise<Bud
   });
 }
 
-export function getForecast(tripId?: string, userId = 'demo-user'): Promise<ForecastResult> {
-  const params = new URLSearchParams({ userId });
+export function getForecast(tripId?: string): Promise<ForecastResult> {
+  const params = new URLSearchParams();
   if (tripId) params.set('tripId', tripId);
-  return request<ForecastResult>(`/api/budget/forecast?${params.toString()}`);
+  const query = params.toString();
+  return request<ForecastResult>(`/api/budget/forecast${query ? `?${query}` : ''}`);
 }
 
 export function getTrip(tripId: string): Promise<Trip> {

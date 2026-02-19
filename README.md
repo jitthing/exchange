@@ -52,6 +52,24 @@ Frontend runs on `http://localhost:3000`.
 |----------|-------------|---------|
 | `PORT` | Backend port | `8080` |
 | `DATABASE_URL` | Postgres connection string | Falls back to in-memory store |
+| `AUTH_DISABLED` | Set `true` to skip JWT auth (local dev) | `false` |
+| `SUPABASE_JWT_SECRET` | Supabase JWT secret for token verification | Required when auth enabled |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Skip auth if unset |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | Skip auth if unset |
+
+### Authentication
+
+The app uses **Supabase Auth** for authentication. For local development without Supabase:
+
+1. Set `AUTH_DISABLED=true` when running the backend — all API requests use a default "demo-user"
+2. Leave `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` unset — the frontend skips auth
+
+For production with Supabase:
+
+1. Create a Supabase project and get your JWT secret, URL, and anon key
+2. Set all env vars (see `.env.example`)
+3. The backend validates JWT tokens on all `/api/*` routes (except `/health`)
+4. The frontend provides login/signup UI and attaches Bearer tokens to API calls
 
 ## Database Migrations
 

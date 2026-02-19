@@ -11,7 +11,7 @@ import { createBudgetEntry, getBudgetEntries, getForecast } from '@/lib/api';
 import { BudgetEntry, ForecastResult } from '@/lib/types';
 
 const formSeed = {
-  userId: 'demo-user',
+  userId: '',
   category: 'travel',
   amount: 0,
   currency: 'EUR',
