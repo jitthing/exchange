@@ -1,9 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 
-const tabs = [
+type NavTab = {
+  href: Route;
+  label: string;
+  icon: JSX.Element;
+};
+
+const tabs: NavTab[] = [
   {
     href: '/',
     label: 'Home',
