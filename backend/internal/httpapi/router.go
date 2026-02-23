@@ -7,14 +7,19 @@ import (
 
 	"exchange-travel-planner/backend/internal/auth"
 	"exchange-travel-planner/backend/internal/domain"
+	"exchange-travel-planner/backend/internal/provider"
 )
 
 type Server struct {
-	store domain.DataStore
+	store             domain.DataStore
+	transportProvider provider.TransportProvider
 }
 
 func NewServer(s domain.DataStore) *Server {
-	return &Server{store: s}
+	return &Server{
+		store:             s,
+		transportProvider: provider.NewOpenTransportProviderFromEnv(),
+	}
 }
 
 func (s *Server) Routes() http.Handler {
@@ -174,6 +179,12 @@ func (s *Server) handleSearchTransport(w http.ResponseWriter, r *http.Request) {
 	if to == "" {
 		writeErr(w, http.StatusBadRequest, "missing to")
 		return
+	}
+	if s.transportProvider != nil {
+		if options, err := s.transportProvider.SearchTransport(r.Context(), from, to); err == nil && len(options) > 0 {
+			writeJSON(w, http.StatusOK, map[string]any{"options": options})
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"options": s.store.SearchTransport(from, to)})
 }

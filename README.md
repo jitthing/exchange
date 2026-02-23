@@ -54,6 +54,9 @@ Frontend runs on `http://localhost:3000`.
 | `DATABASE_URL` | Postgres connection string | Falls back to in-memory store |
 | `AUTH_DISABLED` | Set `true` to skip JWT auth (local dev) | `false` |
 | `SUPABASE_JWT_SECRET` | Supabase JWT secret for token verification | Required when auth enabled |
+| `REAL_PROVIDER_ENABLED` | Enable live transport provider calls for `/api/search/transport` | `false` |
+| `REAL_PROVIDER_BASE_URL` | Live transport provider base URL | `https://transport.opendata.ch/v1` |
+| `REAL_PROVIDER_TIMEOUT_MS` | Live provider request timeout in milliseconds | `2500` |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Skip auth if unset |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | Skip auth if unset |
 
@@ -93,3 +96,10 @@ docker compose -f docker-compose.dev.yml run --rm flyway
 - Group trip share flow (`GET /api/trips/:id`, `POST /api/trips/:id/share`)
 - Mobile-friendly screens for Home, Calendar, Discover, Budget, Group, Settings, Trip Detail
 - PWA manifest and install metadata
+
+## Real Provider Transport (MVP)
+
+- `GET /api/search/transport?from=&to=` now supports a live provider integration using `transport.opendata.ch`.
+- The live provider is opt-in via `REAL_PROVIDER_ENABLED=true`.
+- If the provider is disabled, times out, or returns no usable options, the backend falls back to the existing seeded adapter results.
+- The Discover screen automatically enriches optimizer results with this endpoint so transport rows can display live provider-backed options when available.

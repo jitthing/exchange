@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { optimizeTrips } from '@/lib/api';
+import { getTransport, optimizeTrips } from '@/lib/api';
 import { TripOption } from '@/lib/types';
 
 const initialForm = {
@@ -48,7 +48,20 @@ export default function DiscoverPage() {
     setError('');
     try {
       const payload = await optimizeTrips(form);
-      setResults(payload.options);
+      const enriched = await Promise.all(
+        payload.options.map(async (option) => {
+          try {
+            const transport = await getTransport(form.departureCity, option.destination);
+            if (transport.options.length > 0) {
+              return { ...option, transportOptions: transport.options };
+            }
+          } catch {
+            // Keep optimizer transport fallback when provider data is unavailable.
+          }
+          return option;
+        })
+      );
+      setResults(enriched);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to optimize');
     } finally {
