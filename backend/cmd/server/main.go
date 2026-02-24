@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"exchange-travel-planner/backend/internal/config"
 	"exchange-travel-planner/backend/internal/db"
 	"exchange-travel-planner/backend/internal/domain"
 	"exchange-travel-planner/backend/internal/httpapi"
@@ -18,6 +19,10 @@ import (
 var _ domain.DataStore = (*db.PgStore)(nil)
 
 func main() {
+	if _, err := config.LoadProviderConfigFromEnv(); err != nil {
+		log.Fatalf("provider configuration error: %v", err)
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
