@@ -1,0 +1,4 @@
+# Ralph loop queue for Exchange app
+Real provider API integration (MVP endpoint + UI wiring)
+ICS parser import flow (upload + parse + itinerary ingest)
+PWA offline baseline (service worker + core route caching)
